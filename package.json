@@ -17,6 +17,6 @@
     "tool"
   ],
   "author": "AxelDavid45",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "packageManager": "pnpm@10.25.0"
 }
