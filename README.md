@@ -124,4 +124,4 @@ OPENAI_API_KEY=your_openai_key
 
 ## License
 
-MIT
+GPL-3.0
