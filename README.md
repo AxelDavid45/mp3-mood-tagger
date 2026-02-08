@@ -33,7 +33,7 @@ A Node.js CLI tool that analyzes your DJ music files, fetches metadata from Spot
 
 ## Comment Format
 
-```
+```txt
 [Use case] · [Artists + origin] · [Energy] · [When to play]
 ```
 
@@ -65,7 +65,7 @@ No emojis. Clean and scannable in DJ software.
 
 ## Project Structure
 
-```
+```txt
 genre-tagger/
 ├── src/
 │   ├── index.js           # CLI entry point
@@ -94,7 +94,7 @@ npx genre-tagger status /path/to/music
 
 ## Workflow
 
-```
+```txt
 Read file → Check if analyzed → Fetch Spotify
 → LLM picks genre + writes comment → You review → Write tags
 ```

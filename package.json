@@ -2,13 +2,16 @@
   "name": "music-tagger-cli",
   "version": "1.0.0",
   "description": "CLI tool for tagging music files with comments, genre and mood.",
-  "main": "index.js",
+  "main": "cli.js",
+  "bin": {
+    "music-tagger": "src/cli.js"
+  },
   "type": "module",
   "engines": {
-    "node": ">22"
+    "node": ">=22"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "format": "pnpm exec prettier . --write"
   },
   "keywords": [
     "music",
@@ -18,5 +21,11 @@
   ],
   "author": "AxelDavid45",
   "license": "GPL-3.0",
-  "packageManager": "pnpm@10.25.0"
+  "packageManager": "pnpm@10.29.1",
+  "dependencies": {
+    "mp3tag.js": "^3.14.1"
+  },
+  "devDependencies": {
+    "prettier": "3.8.1"
+  }
 }
