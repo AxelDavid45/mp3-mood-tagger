@@ -4,31 +4,31 @@ A Node.js CLI tool that analyzes your DJ music files, fetches metadata from Spot
 
 ## Data Sources
 
-| Priority | Source | When |
-|----------|--------|------|
-| 1 | **Spotify API** | Primary - structured metadata |
-| 2 | **GPT-4o mini + web search** | Fallback or when Spotify has no match |
+| Priority | Source                       | When                                  |
+| -------- | ---------------------------- | ------------------------------------- |
+| 1        | **Spotify API**              | Primary - structured metadata         |
+| 2        | **GPT-4o mini + web search** | Fallback or when Spotify has no match |
 
 ## What Gets Written to Files
 
 ### Standard ID3 Tags
 
-| Tag | Content | Example |
-|-----|---------|---------|
-| Title | Track name | "La Ni Merma" |
-| Artist | Main artist | "Mora" |
-| Album | Album name | "Estrella" |
-| Album Artist | All artists (main + features) | "Mora, Jhayco" |
-| Genre | Predominant (LLM picks from Spotify genres) | "Reggaeton" |
-| Year | Release year | "2022" |
-| Comment | DJ context | "Club/Perreo · Mora & Jhayco (PR) · Alta energia · Peak time" |
+| Tag          | Content                                     | Example                                                       |
+| ------------ | ------------------------------------------- | ------------------------------------------------------------- |
+| Title        | Track name                                  | "La Ni Merma"                                                 |
+| Artist       | Main artist                                 | "Mora"                                                        |
+| Album        | Album name                                  | "Estrella"                                                    |
+| Album Artist | All artists (main + features)               | "Mora, Jhayco"                                                |
+| Genre        | Predominant (LLM picks from Spotify genres) | "Reggaeton"                                                   |
+| Year         | Release year                                | "2022"                                                        |
+| Comment      | DJ context                                  | "Club/Perreo · Mora & Jhayco (PR) · Alta energia · Peak time" |
 
 ### Custom ID3 Tags
 
-| Tag | Content |
-|-----|---------|
-| `TXXX:GenreTaggerStatus` | "analyzed" |
-| `TXXX:GenreTaggerDate` | "2026-01-30" |
+| Tag                      | Content           |
+| ------------------------ | ----------------- |
+| `TXXX:GenreTaggerStatus` | "analyzed"        |
+| `TXXX:GenreTaggerDate`   | "2026-01-30"      |
 | `TXXX:GenreTaggerSource` | "spotify" / "llm" |
 
 ## Comment Format
@@ -54,14 +54,14 @@ No emojis. Clean and scannable in DJ software.
 
 ## Tech Stack
 
-| Purpose | Package |
-|---------|---------|
-| ID3 tags | `node-id3` |
-| Spotify API | `spotify-web-api-node` |
-| OpenAI | `openai` |
-| CLI | `commander` |
-| File scanning | `glob` |
-| Environment | `dotenv` |
+| Purpose       | Package                |
+| ------------- | ---------------------- |
+| ID3 tags      | `node-id3`             |
+| Spotify API   | `spotify-web-api-node` |
+| OpenAI        | `openai`               |
+| CLI           | `commander`            |
+| File scanning | `glob`                 |
+| Environment   | `dotenv`               |
 
 ## Project Structure
 
@@ -95,7 +95,7 @@ npx genre-tagger status /path/to/music
 ## Workflow
 
 ```
-Read file → Check if analyzed → Fetch Spotify 
+Read file → Check if analyzed → Fetch Spotify
 → LLM picks genre + writes comment → You review → Write tags
 ```
 
