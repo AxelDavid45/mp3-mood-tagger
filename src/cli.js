@@ -1,5 +1,23 @@
 import { parseArgs, styleText } from "node:util";
 
+function renderHelp(options) {
+  console.log(styleText("cyan", "Usage: music-tagger [options]"));
+  console.log(styleText("cyan", "Options:"));
+  Object.entries(options).forEach(([key, option]) => {
+    const short = option.short ? `-${option.short}, ` : "";
+    console.log(
+      styleText(
+        "cyan",
+        `  ${short}--${key}${option.type === "boolean" ? "" : ` <${option.type}>`}`,
+      ),
+    );
+    if (option.description) {
+      console.log(styleText("gray", `    ${option.description}`));
+    }
+  });
+  process.exit(0);
+}
+
 const options = {
   folder: {
     type: "string",
@@ -21,28 +39,28 @@ try {
 
   if (!inputVal.length) {
     // show help
-    console.log(styleText("cyan", "Usage: music-tagger [options]"));
-    console.log(styleText("cyan", "Options:"));
-    Object.entries(options).forEach(([key, option]) => {
-      const short = option.short ? `-${option.short}, ` : "";
-      console.log(
-        styleText(
-          "cyan",
-          `  ${short}--${key}${option.type === "boolean" ? "" : ` <${option.type}>`}`,
-        ),
-      );
-      if (option.description) {
-        console.log(styleText("gray", `    ${option.description}`));
-      }
-    });
-    process.exit(0);
+    renderHelp(options);
   }
+
+  if (values.help) {
+    renderHelp(options);
+  }
+
+  console.log(values);
 } catch (error) {
-  if (error.code === "ARG_UNKNOWN_OPTION") {
-    console.log(styleText("yellow", `Unknown option: ${error.option}`));
+  if (error.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+    console.error(
+      styleText(
+        "yellow",
+        `${error.message}, use --help to see available options.`,
+      ),
+    );
   } else {
     console.error(
-      styleText("red", `Error parsing arguments: ${error.message}`),
+      styleText(
+        "red",
+        `Error parsing arguments: ${error.message}, use -h to see available options.`,
+      ),
     );
   }
 
