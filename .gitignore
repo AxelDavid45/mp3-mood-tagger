@@ -1,5 +1,6 @@
-.DSA_Store
+.DS_Store
 
+music/
 # Logs
 logs
 *.log
