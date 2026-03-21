@@ -1,10 +1,30 @@
 #!/usr/bin/env node
 import { parseArgs, styleText } from "node:util";
-import { createInterface } from "node:readline";
+import * as readline from "node:readline";
 import { glob } from "glob";
 import { analyzeTrack } from "./analyzer.js";
 import { readTags, writeTags } from "./tagger.js";
 import path from "node:path";
+
+async function askUser(question) {
+  // Create a fresh readline interface for each question
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+  
+  return new Promise((resolve) => {
+    // Resume stdin in case it was paused
+    if (process.stdin.isPaused()) {
+      process.stdin.resume();
+    }
+    
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
 
 function renderHelp(options) {
   console.log(styleText("cyan", "🎵 Genre Tagger - AI-powered music file analyzer"));
@@ -28,21 +48,8 @@ function renderHelp(options) {
   console.log("  music-tagger --file song.mp3 --force");
   console.log("  music-tagger --folder ./music --status");
   
-  process.exit(0);
-}
-
-async function askUser(question) {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
   
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
+  process.exit(0);
 }
 
 async function confirmAnalysis(analysis, filename) {
@@ -198,87 +205,96 @@ const options = {
   },
 };
 
-try {
-  const { values } = parseArgs({ options });
+(async () => {
+  try {
+    const { values } = parseArgs({ options });
 
-  if (!Object.keys(values).length || values.help) {
-    renderHelp(options);
-  }
+    if (!Object.keys(values).length || values.help) {
+      renderHelp(options);
+    }
 
-  // Check for required environment
-  if (!process.env.ANTHROPIC_API_KEY && !values.status) {
-    console.error(styleText("red", "❌ ANTHROPIC_API_KEY environment variable is required"));
-    console.log(styleText("yellow", "💡 Copy .env.example to .env and add your Anthropic API key"));
-    process.exit(1);
-  }
-
-  if (values.status) {
-    const targetPath = values.folder || values.file;
-    if (!targetPath) {
-      console.error(styleText("red", "❌ Please specify --folder or --file for status check"));
+    // Check for required environment
+    if (!process.env.ANTHROPIC_API_KEY && !values.status) {
+      console.error(styleText("red", "❌ ANTHROPIC_API_KEY environment variable is required"));
+      console.log(styleText("yellow", "💡 Copy .env.example to .env and add your Anthropic API key"));
+      
       process.exit(1);
     }
-    await showStatus(targetPath);
-    process.exit(0);
-  }
 
-  if (values.file) {
-    // Process single file
-    const result = await processFile(values.file, values.force);
-    process.exit(result.success ? 0 : 1);
-  }
-
-  if (values.folder) {
-    // Process folder
-    const files = await glob(`${values.folder}/**/*.{mp3,flac}`, { nodir: true });
-    
-    if (files.length === 0) {
-      console.log(styleText("yellow", "⚠️  No audio files found in the specified folder"));
+    if (values.status) {
+      const targetPath = values.folder || values.file;
+      if (!targetPath) {
+        console.error(styleText("red", "❌ Please specify --folder or --file for status check"));
+        
+        process.exit(1);
+      }
+      await showStatus(targetPath);
+      
       process.exit(0);
     }
-    
-    console.log(styleText("cyan", `🎵 Found ${files.length} audio files`));
-    
-    let processed = 0;
-    let skipped = 0;
-    let failed = 0;
-    
-    for (const file of files) {
-      const result = await processFile(file, values.force);
-      if (result.success) {
-        if (result.skipped) {
-          skipped++;
-        } else {
-          processed++;
-        }
-      } else {
-        failed++;
-      }
+
+    if (values.file) {
+      // Process single file
+      const result = await processFile(values.file, values.force);
+      
+      process.exit(result.success ? 0 : 1);
     }
+
+    if (values.folder) {
+      // Process folder
+      const files = await glob(`${values.folder}/**/*.{mp3,flac}`, { nodir: true });
+      
+      if (files.length === 0) {
+        console.log(styleText("yellow", "⚠️  No audio files found in the specified folder"));
+        
+        process.exit(0);
+      }
+      
+      console.log(styleText("cyan", `🎵 Found ${files.length} audio files`));
+      
+      let processed = 0;
+      let skipped = 0;
+      let failed = 0;
+      
+      for (const file of files) {
+        const result = await processFile(file, values.force);
+        if (result.success) {
+          if (result.skipped) {
+            skipped++;
+          } else {
+            processed++;
+          }
+        } else {
+          failed++;
+        }
+      }
+      
+      console.log(styleText("cyan", `\n📈 Summary: ${processed} processed, ${skipped} skipped, ${failed} failed`));
+      
+      process.exit(failed > 0 ? 1 : 0);
+    }
+
+    console.error(styleText("red", "❌ Please specify --folder or --file"));
+    renderHelp(options);
+
+  } catch (error) {
+    if (error.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+      console.error(
+        styleText(
+          "yellow",
+          `${error.message}, use --help to see available options.`,
+        ),
+      );
+    } else {
+      console.error(
+        styleText(
+          "red",
+          `Error: ${error.message}`,
+        ),
+      );
+    }
+
     
-    console.log(styleText("cyan", `\n📈 Summary: ${processed} processed, ${skipped} skipped, ${failed} failed`));
-    process.exit(failed > 0 ? 1 : 0);
+    process.exit(1);
   }
-
-  console.error(styleText("red", "❌ Please specify --folder or --file"));
-  renderHelp(options);
-
-} catch (error) {
-  if (error.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
-    console.error(
-      styleText(
-        "yellow",
-        `${error.message}, use --help to see available options.`,
-      ),
-    );
-  } else {
-    console.error(
-      styleText(
-        "red",
-        `Error: ${error.message}`,
-      ),
-    );
-  }
-
-  process.exit(1);
-}
+})();

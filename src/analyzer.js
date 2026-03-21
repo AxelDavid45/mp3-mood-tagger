@@ -35,77 +35,77 @@ export async function analyzeTrack(filename, existingTags = {}, userGuidance = '
   
   const guidanceText = userGuidance ? `\n\nUser guidance: ${userGuidance}` : '';
   
-  const prompt = `You are a music expert. Search the web to verify and complete the metadata for this track.
+  const prompt = `You are a music expert and DJ. Search the web to verify and complete the metadata for this track.
 
 Existing metadata:
 ${searchQuery}
 Filename: ${filename}${guidanceText}
 
-IMPORTANT: 
-- Use the existing metadata as a starting point for your web search
-- Verify the information is correct by searching online
-- Find any missing information (especially release year if not provided)
-- Correct any inaccurate genre classifications for DJ use
+CRITICAL INSTRUCTIONS: 
+- DO NOT trust the existing genre tag - it may be incorrect or too generic
+- Search the web to find the ACTUAL genre based on the track's sound, BPM, and style
+- The existing genre is just a reference point, not the truth
+- Verify ALL information by searching online (artist, title, release year)
+- Classify the genre from a DJ perspective, not a generic music store perspective
 
-Search for:
+Search and analyze:
 1. Verify the artist name and track title are correct
-2. Find the release year if not provided (or verify if provided)
-3. Determine the best DJ-friendly genre (may differ from the existing genre tag)
+2. Find the release year (search for official release date)
+3. DETERMINE THE REAL GENRE by researching:
+   - What genre do music databases (Beatport, Discogs, Spotify) list it as?
+   - What BPM and style characteristics does it have?
+   - What genre would DJs categorize this as?
+   - Is the existing genre tag accurate or misleading?
 
 After searching, provide:
 
 1. **Genre**: ONE clear genre that DJs would use (e.g., "Reggaeton", "House", "Techno", "Hip Hop", "Afrobeats")
 2. **Year**: The release year (YYYY format)
-3. **DJ Comment**: Format as "[Use case] · [Energy] · [When to play]"
+3. **DJ Comment**: Format as "[Context] · [Energy] · [Timing]"
 
 Requirements:
-- Genre must be based on web search results and DJ classification
+- Genre MUST be verified through web search - ignore the existing tag if it's wrong
+- Prioritize DJ-friendly genre classifications (Beatport, DJ pools, music databases)
 - Year must be the actual release year found online
 - Comment should be concise, no emojis, scannable in DJ software
+- Choose ONLY ONE option from each category below
 
-**Use case examples:**
-- Club/Perreo
-- Radio/Commercial
-- Warm-up
-- Peak time
-- Opening
-- Closing
-- Dinner
-- Beach
-- Workout
+**Context (where/how to use - choose ONE):**
+- Club (electronic dance music for nightclubs: House, Techno, Trance, EDM)
+- Perreo (reggaeton/dembow for dancing close/grinding)
+- Radio (commercial/mainstream appeal)
+- Lounge (background/ambient music)
+- Workout (high energy for exercise)
+- Beach (tropical/summer vibes)
+- Dinner (sophisticated background)
 
-**Energy examples (choose the most appropriate):**
+**Energy level (choose ONE):**
 - Chill
-- Easy Listening
-- Perreo
-- Chill Perreo
-- Reggaeton Suave
-- Medio tempo
-- Alta energia
-- Intenso
-- Energético
 - Relajado
-- Morning Breakfast
-- Dinner vibe
+- Medio tempo
+- Energético
+- Alta energía
+- Intenso
 
-**When to play examples:**
-- Peak time
+**Timing (when to play - choose ONE):**
 - Warm-up
-- Cool down
 - Opening
+- Peak time
 - Closing
 - Early night
 - Late night
 - Afternoon
 
-Return ONLY a JSON object:
+Return ONLY a valid JSON object (no markdown, no code blocks, no extra text):
 {
   "genre": "Genre Name",
   "year": "2024",
-  "comment": "Use case · Energy · When to play",
+  "comment": "Context · Energy · Timing",
   "confidence": "high|medium|low",
-  "searchSummary": "Brief summary of what you found online"
-}`;
+  "searchSummary": "Brief summary - avoid quotes and newlines"
+}
+
+IMPORTANT: Ensure searchSummary has no line breaks, control characters, or unescaped quotes.`;
 
   try {
     logger.debug({ prompt }, 'Sending prompt to Claude');
@@ -118,8 +118,17 @@ Return ONLY a JSON object:
 
     logger.debug({ response: result.text }, 'Received response from Claude');
 
-    // Parse the JSON response
-    const analysis = JSON.parse(result.text.trim());
+    // Clean and parse the JSON response
+    let cleanedText = result.text.trim();
+    
+    // Extract JSON if wrapped in markdown code blocks
+    const jsonMatch = cleanedText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+    if (jsonMatch) {
+      cleanedText = jsonMatch[1].trim();
+    }
+    
+    // Parse the JSON
+    const analysis = JSON.parse(cleanedText);
     
     const successResult = {
       success: true,
