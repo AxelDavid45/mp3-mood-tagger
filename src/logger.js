@@ -1,9 +1,15 @@
 import pino from 'pino';
 import { existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-// Create logs directory if it doesn't exist
-const logsDir = './logs';
+// Get the project root directory (where package.json is)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '..');
+
+// Create logs directory in project root if it doesn't exist
+const logsDir = join(projectRoot, 'logs');
 if (!existsSync(logsDir)) {
   mkdirSync(logsDir, { recursive: true });
 }

@@ -11,19 +11,62 @@ import logger from './logger.js';
 export async function readTags(filePath) {
   try {
     logger.info({ filePath }, 'Reading tags from file');
-    
-    // Use music-metadata for reading (supports FLAC and many formats)
+
+    const ext = filePath.toLowerCase().split('.').pop();
+    let isAnalyzed = false;
+    let analyzedDate = null;
+    let confidence = null;
+    let bpm = null;
+
+    // Read custom tags and BPM based on file type
+    if (ext === 'flac') {
+      const flacTags = await readFlacTags(filePath);
+      isAnalyzed = flacTags.tagMap.GENRETAGGERSTATUS === 'analyzed';
+      analyzedDate = flacTags.tagMap.GENRETAGGERDATE || null;
+      confidence = flacTags.tagMap.GENRETAGGERCONFIDENCE || null;
+      // Read BPM from FLAC tags
+      bpm = flacTags.tagMap.BPM || flacTags.tagMap.TEMPO || null;
+    } else if (ext === 'mp3') {
+      const mp3Tags = NodeID3.read(filePath);
+      if (mp3Tags.userDefinedText) {
+        const statusTag = mp3Tags.userDefinedText.find(t => t.description === 'GenreTaggerStatus');
+        const dateTag = mp3Tags.userDefinedText.find(t => t.description === 'GenreTaggerDate');
+        const confidenceTag = mp3Tags.userDefinedText.find(t => t.description === 'GenreTaggerConfidence');
+
+        isAnalyzed = statusTag?.value === 'analyzed';
+        analyzedDate = dateTag?.value || null;
+        confidence = confidenceTag?.value || null;
+      }
+      // Read BPM from MP3 tags
+      bpm = mp3Tags.bpm || null;
+    }
+
+    // Use music-metadata for reading standard tags (supports FLAC and many formats)
     const metadata = await parseFile(filePath);
     const common = metadata.common;
-    
-    logger.debug({ metadata: common }, 'Parsed metadata');
-    
-    // Check if already analyzed by looking for custom tags
+
+    // Try to get BPM from music-metadata if not found yet
+    if (!bpm && metadata.native) {
+      // Check various tag formats for BPM
+      for (const [format, tags] of Object.entries(metadata.native)) {
+        const bpmTag = tags.find(t =>
+          t.id === 'BPM' ||
+          t.id === 'TBPM' ||
+          t.id === 'bpm' ||
+          t.id === 'TEMPO' ||
+          t.id.toLowerCase().includes('bpm')
+        );
+        if (bpmTag) {
+          bpm = bpmTag.value;
+          break;
+        }
+      }
+    }
+
+    logger.debug({ metadata: common, isAnalyzed, analyzedDate, confidence, bpm }, 'Parsed metadata');
+
     const commentText = Array.isArray(common.comment) ? common.comment.join('; ') : (common.comment || '');
-    const isAnalyzed = commentText.includes('GenreTaggerStatus:analyzed');
-    
-    const analyzedDate = commentText.match(/GenreTaggerDate:(\d{4}-\d{2}-\d{2})/)?.[1] || null;
-    
+
     const result = {
       success: true,
       tags: {
@@ -34,18 +77,22 @@ export async function readTags(filePath) {
         genre: Array.isArray(common.genre) ? common.genre[0] : (common.genre || ''),
         year: common.year?.toString() || '',
         comment: commentText,
+        bpm: bpm ? parseInt(bpm) : null,
       },
       isAnalyzed,
-      analyzedDate
+      analyzedDate,
+      confidence
     };
-    
-    logger.info({ 
-      filePath, 
-      artist: result.tags.artist, 
+
+    logger.info({
+      filePath,
+      artist: result.tags.artist,
       title: result.tags.title,
-      isAnalyzed 
+      bpm: result.tags.bpm,
+      isAnalyzed,
+      confidence
     }, 'Tags read successfully');
-    
+
     return result;
   } catch (error) {
     logger.error({ filePath, error: error.message, stack: error.stack }, 'Error reading tags');

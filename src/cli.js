@@ -1,10 +1,19 @@
 #!/usr/bin/env node
+import { config } from 'dotenv';
 import { parseArgs, styleText } from "node:util";
 import * as readline from "node:readline";
 import { glob } from "glob";
 import { analyzeTrack } from "./analyzer.js";
 import { readTags, writeTags } from "./tagger.js";
 import path from "node:path";
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// Load .env from the CLI package directory (where this script is installed)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = join(__dirname, '..');
+config({ path: join(projectRoot, '.env') });
 
 async function askUser(question) {
   // Create a fresh readline interface for each question
@@ -52,7 +61,7 @@ function renderHelp(options) {
   process.exit(0);
 }
 
-async function confirmAnalysis(analysis, filename) {
+async function confirmAnalysis(analysis, filename, auto = false) {
   console.log(styleText("yellow", "\n🔍 Web search results:"));
   console.log(styleText("gray", `   ${analysis.searchSummary}`));
   console.log(styleText("yellow", "\n📋 Proposed tags:"));
@@ -62,7 +71,19 @@ async function confirmAnalysis(analysis, filename) {
   console.log(styleText("cyan", `   Comment: ${analysis.comment}`));
   console.log(styleText("cyan", `   Confidence: ${analysis.confidence}`));
   
-  const response = await askUser("\n✅ Accept these tags? (y/n/retry): ");
+  // Auto mode: accept automatically
+  if (auto) {
+    console.log(styleText("green", "\n✅ Auto-accepting tags..."));
+    return { accepted: true, analysis };
+  }
+  
+  const response = await askUser("\n✅ Accept these tags? (y/n/retry/ENTER to skip): ");
+  
+  // Empty response (just ENTER) = skip
+  if (response === '') {
+    console.log(styleText("yellow", "⏭️  Skipping file."));
+    return { accepted: false };
+  }
   
   if (response.toLowerCase() === 'y' || response.toLowerCase() === 'yes') {
     return { accepted: true, analysis };
@@ -79,11 +100,11 @@ async function confirmAnalysis(analysis, filename) {
   }
   
   // Default to asking again if unclear response
-  console.log(styleText("yellow", "Please answer 'y' for yes, 'n' for no, or 'retry' to search again"));
+  console.log(styleText("yellow", "Please answer 'y' for yes, 'n' for no, 'retry' to search again, or press ENTER to skip"));
   return await confirmAnalysis(analysis, filename);
 }
 
-async function processFile(filePath, force = false) {
+async function processFile(filePath, force = false, auto = false) {
   console.log(styleText("blue", `\n📁 Processing: ${path.basename(filePath)}`));
   
   // Read existing tags
@@ -106,6 +127,9 @@ async function processFile(filePath, force = false) {
   console.log(styleText("gray", `   Album: ${tags.album || 'Unknown'}`));
   console.log(styleText("gray", `   Current Genre: ${tags.genre || 'None'}`));
   console.log(styleText("gray", `   Current Year: ${tags.year || 'None'}`));
+  if (tags.bpm) {
+    console.log(styleText("gray", `   BPM: ${tags.bpm}`));
+  }
   
   let analysis;
   let userGuidance = '';
@@ -121,8 +145,8 @@ async function processFile(filePath, force = false) {
       return analysis;
     }
     
-    // Ask user for confirmation
-    const confirmation = await confirmAnalysis(analysis, path.basename(filePath));
+    // Ask user for confirmation (or auto-accept)
+    const confirmation = await confirmAnalysis(analysis, path.basename(filePath), auto);
     
     if (confirmation.accepted) {
       analysis = confirmation.analysis;
@@ -193,6 +217,11 @@ const options = {
     type: "boolean",
     description: "Re-analyze already processed files"
   },
+  auto: {
+    type: "boolean",
+    short: "a",
+    description: "Automatically accept all tags without confirmation (use with caution)"
+  },
   status: {
     type: "boolean",
     short: "s",
@@ -233,9 +262,26 @@ const options = {
       process.exit(0);
     }
 
+    // Warning and confirmation for auto mode
+    if (values.auto) {
+      console.log(styleText("red", "\n⚠️  WARNING: AUTO MODE ENABLED"));
+      console.log(styleText("yellow", "This will automatically accept ALL AI-generated tags without your review."));
+      console.log(styleText("yellow", "Tags will be written directly to your music files."));
+      console.log(styleText("yellow", "This may result in incorrect metadata if the AI makes mistakes.\n"));
+      
+      const confirmation = await askUser("Are you sure you want to continue? (yes/no): ");
+      
+      if (confirmation.toLowerCase() !== 'yes') {
+        console.log(styleText("yellow", "❌ Auto mode cancelled. Exiting."));
+        process.exit(0);
+      }
+      
+      console.log(styleText("green", "✅ Auto mode confirmed. Processing files automatically...\n"));
+    }
+
     if (values.file) {
       // Process single file
-      const result = await processFile(values.file, values.force);
+      const result = await processFile(values.file, values.force, values.auto);
       
       process.exit(result.success ? 0 : 1);
     }
@@ -250,14 +296,20 @@ const options = {
         process.exit(0);
       }
       
-      console.log(styleText("cyan", `🎵 Found ${files.length} audio files`));
+      console.log(styleText("cyan", `🎵 Found ${files.length} audio files\n`));
       
       let processed = 0;
       let skipped = 0;
       let failed = 0;
+      let currentIndex = 0;
       
       for (const file of files) {
-        const result = await processFile(file, values.force);
+        currentIndex++;
+        console.log(styleText("magenta", `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+        console.log(styleText("magenta", `📊 Progress: ${currentIndex}/${files.length} | ✅ ${processed} | ⏭️  ${skipped} | ❌ ${failed}`));
+        console.log(styleText("magenta", `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+        
+        const result = await processFile(file, values.force, values.auto);
         if (result.success) {
           if (result.skipped) {
             skipped++;
@@ -269,7 +321,9 @@ const options = {
         }
       }
       
-      console.log(styleText("cyan", `\n📈 Summary: ${processed} processed, ${skipped} skipped, ${failed} failed`));
+      console.log(styleText("cyan", `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
+      console.log(styleText("cyan", `📈 Final Summary: ${processed} processed, ${skipped} skipped, ${failed} failed`));
+      console.log(styleText("cyan", `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`));
       
       process.exit(failed > 0 ? 1 : 0);
     }
