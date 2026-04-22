@@ -1,12 +1,12 @@
 # Genre Tagger
 
-A Node.js CLI tool that analyzes your DJ music files, uses Claude 3.5 Sonnet to research metadata, pick the best genre and generate DJ comments, then writes everything to the file's ID3 tags.
+A Node.js CLI tool that analyzes your DJ music files, uses Claude Sonnet 4.6 to research metadata, pick the best genre and generate DJ comments, then writes everything to the file's ID3 tags.
 
 ## Data Sources
 
 | Priority | Source                 | When                              |
 | -------- | ---------------------- | --------------------------------- |
-| 1        | **Claude 3.5 Sonnet** | AI analysis with music knowledge |
+| 1        | **Claude Sonnet 4.6** | AI analysis with music knowledge |
 
 ## What Gets Written to Files
 
@@ -190,23 +190,25 @@ Read file → Check if analyzed → Claude analysis for metadata
 
 ### Cost Estimation
 
-Using Claude 3 Haiku (most economical model):
-- **Input**: $0.25 per million tokens
-- **Output**: $1.25 per million tokens
+Using Claude Sonnet 4.6 (best balance of speed and intelligence):
+- **Input**: $3.00 per million tokens
+- **Output**: $15.00 per million tokens
 
 Typical usage per track:
 - ~500 input tokens (metadata + prompt)
-- ~200 output tokens (analysis result)
-- **Cost per track**: ~$0.00037 (less than 0.04 cents)
+- ~250 output tokens (analysis result)
+- **Cost per track**: ~$0.00525 (about 0.5 cents)
 
-For 1,000 tracks: ~$0.37 USD
+For 1,000 tracks: ~$5.25 USD
 
-For 10,000 tracks: ~$3.70 USD
+For 10,000 tracks: ~$52.50 USD
 
 Note: Costs may vary based on:
 - Length of existing metadata
 - Complexity of web search results
 - Number of retries requested
+
+**Model Trade-off**: Claude Sonnet 4.6 provides significantly better accuracy in genre classification and metadata verification compared to Haiku, at approximately 14x the cost. For DJ libraries where precision matters, this is typically worth the investment.
 
 ### Installation
 

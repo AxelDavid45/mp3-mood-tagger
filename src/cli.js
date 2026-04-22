@@ -66,6 +66,18 @@ async function confirmAnalysis(analysis, filename, auto = false) {
   console.log(styleText("gray", `   ${analysis.searchSummary}`));
   console.log(styleText("yellow", "\n📋 Proposed tags:"));
   console.log(styleText("cyan", `   File: ${filename}`));
+  
+  // Show artist, title, album if they were found/corrected
+  if (analysis.artist) {
+    console.log(styleText("cyan", `   Artist: ${analysis.artist}`));
+  }
+  if (analysis.title) {
+    console.log(styleText("cyan", `   Title: ${analysis.title}`));
+  }
+  if (analysis.album) {
+    console.log(styleText("cyan", `   Album: ${analysis.album}`));
+  }
+  
   console.log(styleText("cyan", `   Genre: ${analysis.genre}`));
   console.log(styleText("cyan", `   Year: ${analysis.year}`));
   console.log(styleText("cyan", `   Comment: ${analysis.comment}`));
@@ -133,6 +145,7 @@ async function processFile(filePath, force = false, auto = false) {
   
   let analysis;
   let userGuidance = '';
+  let retryCount = 0;
   
   // Analysis loop with retry option
   while (true) {
@@ -145,6 +158,14 @@ async function processFile(filePath, force = false, auto = false) {
       return analysis;
     }
     
+    // Auto-retry once if confidence is medium and we haven't retried yet
+    if (analysis.confidence === 'medium' && retryCount === 0) {
+      retryCount++;
+      console.log(styleText("yellow", "\n⚠️  Confidence is MEDIUM. Retrying with additional search parameters..."));
+      userGuidance = `Previous attempt had medium confidence. Search more thoroughly using alternative sources and verify all metadata carefully. Artist: ${tags.artist || 'unknown'}, Title: ${tags.title || 'unknown'}`;
+      continue;
+    }
+    
     // Ask user for confirmation (or auto-accept)
     const confirmation = await confirmAnalysis(analysis, path.basename(filePath), auto);
     
@@ -155,6 +176,7 @@ async function processFile(filePath, force = false, auto = false) {
     
     if (confirmation.retry) {
       userGuidance = confirmation.guidance;
+      retryCount = 0; // Reset retry count for manual retries
       continue;
     }
     

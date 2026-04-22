@@ -122,6 +122,9 @@ async function writeMp3Tags(filePath, newTags, analysis) {
     
     // Build updated tags
     const tags = {
+      artist: newTags.artist || analysis.artist || existingTags.artist,
+      title: newTags.title || analysis.title || existingTags.title,
+      album: newTags.album || analysis.album || existingTags.album,
       genre: newTags.genre || analysis.genre,
       year: newTags.year || analysis.year,
       comment: {
@@ -197,6 +200,9 @@ async function writeFlacTagsToFile(filePath, newTags, analysis) {
     // Build updated tag map
     const tagMap = {
       ...existingFlacTags.tagMap,
+      ARTIST: newTags.artist || analysis.artist || existingFlacTags.tagMap.ARTIST,
+      TITLE: newTags.title || analysis.title || existingFlacTags.tagMap.TITLE,
+      ALBUM: newTags.album || analysis.album || existingFlacTags.tagMap.ALBUM,
       GENRE: newTags.genre || analysis.genre,
       DATE: newTags.year || analysis.year,
       COMMENT: newTags.comment || analysis.comment,

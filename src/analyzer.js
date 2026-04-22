@@ -48,6 +48,7 @@ Busca en la web para confirmar:
 - Que el artista y título son correctos (a veces los tags tienen typos o nombres invertidos)
 - Si el filename sugiere algo diferente a los tags, investiga ambas posibilidades
 - Si no puedes confirmar la identidad del track, indica confidence: "low" y explica en searchSummary.
+- Si encuentras el artista, título o álbum correcto/completo, devuélvelos en el output (incluso si faltaban en la entrada)
 
 Paso 2 — Verificar año de release
 Busca la fecha de lanzamiento en fuentes oficiales (Discogs, Spotify, Beatport, Wikipedia, sitio del sello).
@@ -148,7 +149,18 @@ Reglas Finales:
 - Un solo género. No devuelvas "Tech House / Melodic House". Elige el más preciso.
 - No inventes datos. Si no encuentras el año, pon el del tag existente y baja la confianza a medium.
 - El comment debe ser escaneable. Un DJ lo lee en 2 segundos en pantalla. Nada de párrafos.
-- Respeta el user_notes. Si el usuario da contexto sobre el track, incorpóralo en tu análisis.`;
+- Respeta el user_notes. Si el usuario da contexto sobre el track, incorpóralo en tu análisis.
+
+Output:
+Devuelve un objeto JSON con estos campos:
+- artist (opcional): Solo si lo encontraste/corregiste y es diferente al input o si faltaba
+- title (opcional): Solo si lo encontraste/corregiste y es diferente al input o si faltaba
+- album (opcional): Solo si lo encontraste/corregiste y es diferente al input o si faltaba
+- genre (requerido): El género verificado
+- year (requerido): El año verificado en formato YYYY
+- comment (requerido): Etiqueta rápida + notas opcionales
+- confidence (requerido): high, medium o low
+- searchSummary (requerido): Resumen de 2-3 oraciones de lo que encontraste`;
 
   // Define the schema for structured output
   const analysisSchema = z.object({
@@ -166,10 +178,10 @@ Reglas Finales:
     logger.debug({ prompt }, 'Sending prompt to Claude');
 
     const result = await generateObject({
-      model: anthropic('claude-3-haiku-20240307'),
+      model: anthropic('claude-sonnet-4-6'),
       schema: analysisSchema,
       prompt,
-      maxTokens: 800,
+      maxTokens: 1000,
     });
 
     logger.debug({ response: result.object }, 'Received structured response from Claude');
@@ -178,6 +190,9 @@ Reglas Finales:
 
     const successResult = {
       success: true,
+      artist: analysis.artist || artist,
+      title: analysis.title || title,
+      album: analysis.album || album,
       genre: analysis.genre,
       year: analysis.year,
       comment: analysis.comment,
@@ -188,6 +203,9 @@ Reglas Finales:
 
     logger.info({
       filename,
+      artist: successResult.artist,
+      title: successResult.title,
+      album: successResult.album,
       genre: successResult.genre,
       year: successResult.year,
       confidence: successResult.confidence
